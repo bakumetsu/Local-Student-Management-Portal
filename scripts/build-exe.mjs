@@ -37,8 +37,12 @@ const fail = (msg) => {
 }
 
 function run(cmd, cmdArgs, cwd = ROOT) {
-  // npm trên Windows là npm.cmd → cần shell để chạy được.
-  const result = spawnSync(cmd, cmdArgs, { cwd, stdio: 'inherit', shell: isWindows })
+  // Khi chạy qua "npm run", gọi thẳng npm-cli.js bằng node (không cần shell, tránh DEP0190).
+  // Nếu chạy trực tiếp "node scripts/build-exe.mjs" trên Windows, npm là npm.cmd → cần shell.
+  const npmCli = cmd === 'npm' ? process.env.npm_execpath : null
+  const result = npmCli && /\.c?js$/.test(npmCli)
+    ? spawnSync(process.execPath, [npmCli, ...cmdArgs], { cwd, stdio: 'inherit' })
+    : spawnSync(cmd, cmdArgs, { cwd, stdio: 'inherit', shell: isWindows })
   if (result.status !== 0) fail(`Lệnh thất bại: ${cmd} ${cmdArgs.join(' ')}`)
 }
 
@@ -133,7 +137,7 @@ if (!isWindows) fs.chmodSync(exePath, 0o755)
 if (isMac) {
   spawnSync('codesign', ['--remove-signature', exePath], { stdio: 'inherit' })
 } else if (isWindows) {
-  const signtool = spawnSync('signtool', ['remove', '/s', exePath], { stdio: 'ignore', shell: true })
+  const signtool = spawnSync('signtool', ['remove', '/s', exePath], { stdio: 'ignore' })
   if (signtool.status !== 0) console.log('  (bỏ qua: không có signtool, file .exe sẽ không có chữ ký số — vẫn chạy bình thường)')
 }
 
