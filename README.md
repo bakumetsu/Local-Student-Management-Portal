@@ -58,11 +58,13 @@ npm test                # integration test end-to-end (server thật + DB tạm)
 npm run build:exe
 ```
 
-Kết quả: `release/student-portal-win32-x64.exe` (hoặc `-linux-x64`, `-darwin-arm64` khi build trên hệ điều hành tương ứng). File này chứa Node runtime, backend đã bundle và toàn bộ frontend. Chạy file → mở `http://localhost:8080`.
+Kết quả: `release/student-portal-win32-x64.exe` (hoặc `-linux-x64`, `-darwin-arm64` khi build trên hệ điều hành tương ứng). File này chứa Node runtime, backend đã bundle và toàn bộ frontend. Double-click file → trình duyệt tự mở `http://localhost:8080` (nếu cổng 8080 bận, tự chuyển sang 8081–8090). Giữ cửa sổ console mở trong khi sử dụng.
 
 - Dữ liệu (database, file upload, log, secret) nằm trong thư mục `data/` **cạnh file thực thi**.
 - Cấu hình bằng biến môi trường hoặc file `.env` đặt cạnh file thực thi.
 - Script chạy trên hệ điều hành nào thì tạo binary cho hệ điều hành đó (Node SEA không cross-compile).
+- Nếu khởi động lỗi, cửa sổ giữ nguyên để đọc thông báo và lỗi được ghi vào `startup-error.log` cạnh file thực thi.
+- Bản Windows yêu cầu **Windows 10/11 64-bit**. Gửi cho người khác: xem [docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md#gửi-file-exe-cho-người-khác).
 
 Chi tiết: [docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md#5-đóng-gói-file-thực-thi).
 
@@ -72,7 +74,7 @@ Tất cả đều tuỳ chọn. Có thể đặt trong file `.env` (thư mục c
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `PORT` | `8080` | Cổng HTTP |
+| `PORT` | `8080` | Cổng HTTP (không đặt → tự thử 8081–8090 nếu 8080 bận; đặt rõ → báo lỗi nếu bận) |
 | `HOST` | `0.0.0.0` | Địa chỉ lắng nghe |
 | `DATA_DIR` | `./data` (cạnh `.exe` khi chạy bản đóng gói) | Thư mục database / upload / log |
 | `PUBLIC_URL` | _(trống — dùng URL tương đối)_ | URL công khai, dùng cho link trong email |
@@ -84,6 +86,7 @@ Tất cả đều tuỳ chọn. Có thể đặt trong file `.env` (thư mục c
 | `FROM_EMAIL` | `noreply@example.com` | Địa chỉ gửi / nhận thông báo hệ thống |
 | `CORS_ORIGIN` | `*` | Chỉ cần khi frontend chạy khác origin |
 | `TRUST_PROXY` | `false` | Đặt `true` khi chạy sau reverse proxy (lấy IP thật cho rate limit / log) |
+| `NO_BROWSER` | _(trống)_ | Đặt `1` để bản `.exe` không tự mở trình duyệt |
 | `WEB_DIR` | `frontend/dist` | Thư mục frontend đã build (khi không chạy bản `.exe`) |
 | `VITE_API_ENDPOINT` _(build frontend)_ | `/api` | URL API nếu backend không cùng origin |
 

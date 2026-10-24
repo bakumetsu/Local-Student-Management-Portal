@@ -81,15 +81,29 @@ Lưu ý:
 student-portal-win32-x64.exe
 ```
 
+- Trình duyệt tự mở trang portal; giữ cửa sổ console mở trong khi sử dụng.
 - Dữ liệu tạo ở `data\` cạnh file `.exe`.
 - Cấu hình: tạo file `.env` cạnh file `.exe` (xem bảng biến môi trường trong README) hoặc đặt biến môi trường.
-- Dừng bằng `Ctrl+C`.
+- Dừng bằng `Ctrl+C` hoặc đóng cửa sổ.
+
+### Gửi file .exe cho người khác
+
+Người nhận không cần cài gì thêm, nhưng cần lưu ý:
+
+1. **Máy phải là Windows 10/11 64-bit.** Windows 7/8.1 và Windows 32-bit không chạy được (runtime Node.js không hỗ trợ).
+2. **Gửi qua link tải** (Google Drive, OneDrive, GitHub Release...) thay vì đính kèm trực tiếp: nhiều ứng dụng chat/email chặn hoặc làm hỏng file `.exe` ~90 MB. Nếu nén `.zip`, hãy **giải nén ra thư mục** trước khi chạy.
+3. **SmartScreen** ("Windows protected your PC"): bấm **More info → Run anyway**. Cảnh báo xuất hiện vì file chưa có chữ ký số.
+4. **Antivirus** (kể cả Windows Defender) có thể cách ly file vì là `.exe` lạ chưa ký: kiểm tra *Windows Security → Protection history* và cho phép (Allow) file.
+5. **Windows Firewall** có thể hỏi quyền mạng ở lần chạy đầu: chọn Allow (Private networks). Bấm Cancel vẫn dùng được trên chính máy đó.
+6. Đặt file ở thư mục có quyền ghi (Desktop, Documents, Downloads...) — không đặt trong `C:\Program Files`, vì dữ liệu được tạo cạnh file.
+7. Nếu vẫn không chạy: mở thư mục chứa file, gõ `cmd` vào thanh địa chỉ, rồi chạy `student-portal-win32-x64.exe` trong cửa sổ đó để xem thông báo lỗi; hoặc gửi lại file `startup-error.log` nằm cạnh file `.exe`.
 
 ## 6. Xử lý sự cố
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| `Cổng 8080 đang được sử dụng` | Đặt `PORT=8081` |
+| `Cổng ... đang được sử dụng` | Bản `.exe` tự thử 8081–8090; nếu vẫn bận hoặc đã đặt `PORT`, đặt `PORT=<cổng khác>` |
+| Double-click `.exe` không thấy gì | Xem mục [Gửi file .exe cho người khác](#gửi-file-exe-cho-người-khác) (SmartScreen, antivirus, Windows 10/11 64-bit) |
 | Trang trắng, log báo không tìm thấy frontend build | Chạy `npm run build` (hoặc dùng `npm run dev:web`) |
 | Quên mật khẩu Admin duy nhất | Dùng chức năng Quên mật khẩu (mã OTP trong `data/logs/outbox.log` nếu chưa cấu hình SMTP) |
 | `ERR_UNKNOWN_BUILTIN_MODULE node:sqlite` | Nâng cấp Node lên ≥ 22.13 |
