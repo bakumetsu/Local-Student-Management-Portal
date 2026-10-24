@@ -1,62 +1,109 @@
 # Tài liệu API (API Documentation)
 
-Base URL: `https://<api-id>.execute-api.ap-southeast-1.amazonaws.com/prod`
+Base URL: `http://localhost:8080/api` (cùng origin với giao diện).
 
-Tất cả request (trừ login) cần header:
-`Authorization: <Cognito idToken>`
+- Header xác thực: `Authorization: <idToken>` (có hoặc không có tiền tố `Bearer `).
+- Body request là JSON. Response thành công: `{ "success": true, "message": "...", "data": ... }`; lỗi: `{ "success": false, "message": "...", "error": "..." }`.
+- Quyền: **Admin** và **Staff** luôn được phép; cột "Quyền" liệt kê vai trò bổ sung được phép.
 
 ## Auth
-Mọi xác thực thực hiện qua Cognito (frontend login). API Gateway dùng Cognito
-Authorizer để validate token.
+
+| Method | Path | Quyền | Body / Ghi chú |
+|---|---|---|---|
+| POST | `/auth/login` | Công khai* | `{ email, password }` → `{ idToken, expiresIn, user }` hoặc `{ challenge: "NEW_PASSWORD_REQUIRED", session, email }` |
+| POST | `/auth/complete-new-password` | Công khai* | `{ session, newPassword }` → `{ idToken, ... }` |
+| GET | `/auth/me` | Đã đăng nhập | → `{ sub, email, name, phone_number, role, status }` |
+| PUT | `/auth/me` | Đã đăng nhập | `{ name?, phone? }` |
+| POST | `/auth/change-password` | Đã đăng nhập | `{ oldPassword, newPassword }` → token mới (token cũ bị thu hồi) |
+| POST | `/auth/forgot-password` | Công khai* | `{ email }` — luôn trả 200; mã 6 số gửi qua email, hết hạn 15 phút |
+| POST | `/auth/verify-code` | Công khai* | `{ email, code }` |
+| POST | `/auth/reset-password` | Công khai* | `{ email, code, newPassword }` |
+
+\* Giới hạn 20 request / 15 phút / IP. Chính sách mật khẩu: ≥ 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.
 
 ## Students
 
-### GET /students
-Lấy danh sách sinh viên.
-- Response `200`:
-```json
-{ "students": [ { "id": "S001", "studentId": "S001", "fullName": "Nguyen Van A", "email": "a@x.edu.vn", "gpa": 3.5 } ], "count": 1 }
-```
-
-### GET /students/{id}
-Lấy chi tiết một sinh viên.
-- `200`: object sinh viên.
-- `404`: `{ "message": "Không tìm thấy sinh viên" }`
-
-### POST /students
-Tạo sinh viên mới.
-- Body:
-```json
-{ "studentId": "S001", "fullName": "Nguyen Van A", "email": "a@x.edu.vn", "phone": "0123", "major": "CNTT", "gpa": 3.5 }
-```
-- `201`: `{ "message": "Tạo sinh viên thành công", "student": {...} }`
-- `400`: lỗi validate.
-
-### PUT /students/{id}
-Cập nhật sinh viên. Body chứa các trường cần đổi (`fullName`, `email`, `phone`, `major`, `gpa`).
-
-### DELETE /students/{id}
-Xóa sinh viên. `200`: `{ "message": "Xóa thành công" }`
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/students` | Staff | `{ students, count }` |
+| GET | `/students/{id}` | Staff | |
+| POST | `/students` | Staff | `{ studentId, fullName, email, phone?, gender?, dateOfBirth?, major?, className?, status?, gpa? }` — 409 nếu trùng mã; tự tạo tài khoản Student + email mời |
+| PUT | `/students/{id}` | Staff | Trường bất kỳ ở trên (trừ `studentId`) |
+| DELETE | `/students/{id}` | Admin | |
+| GET | `/students/{studentId}/documents` | Student (chỉ hồ sơ của mình) | `{ documents, count, studentId }`, mỗi document có `fileUrl` ký sẵn |
+| POST | `/students/{studentId}/documents` | Student (chỉ hồ sơ của mình) | `{ fileName, s3Key, documentId?, docType? }` |
 
 ## Documents
 
-### POST /documents/upload-url
-Tạo Presigned URL upload lên S3.
-- Body: `{ "fileName": "thesis.pdf", "contentType": "application/pdf", "studentId": "S001" }`
-- `200`:
-```json
-{ "uploadUrl": "https://s3...?sig=...", "s3Key": "documents/S001/123-thesis.pdf", "fileUrl": "https://bucket.s3.../documents/S001/123-thesis.pdf" }
-```
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| POST | `/documents/upload-url` | Student (chỉ hồ sơ của mình) | `{ fileName, contentType, studentId }` → `{ uploadUrl, s3Key, documentId }` |
+| POST | `/documents/metadata` | Student (chỉ hồ sơ của mình) | `{ studentId, fileName, s3Key, documentId?, docType? }` |
+| GET | `/documents/metadata?studentId=` | Student (chỉ hồ sơ của mình) | Giống `GET /students/{id}/documents` |
 
-### POST /documents/metadata
-Lưu metadata tài liệu và kích hoạt gửi email (SQS → SES).
-- Body: `{ "studentId": "S001", "fileName": "thesis.pdf", "s3Key": "documents/S001/123-thesis.pdf", "fileUrl": "..." }`
-- `201`: `{ "message": "Lưu metadata thành công", "document": {...} }`
+## Teachers
 
-## Mã lỗi chuẩn
-| Code | Ý nghĩa |
-|------|---------|
-| 400 | Dữ liệu không hợp lệ |
-| 401 | Thiếu/hết hạn token |
-| 404 | Không tìm thấy |
-| 500 | Lỗi máy chủ |
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/teachers` | Staff | |
+| GET | `/teachers/{id}` | Staff | |
+| POST | `/teachers` | Admin | `{ teacherId, fullName, email, department, phone?, degree?, subject? }` — tự tạo tài khoản nhóm Staff |
+| PUT | `/teachers/{id}` | Admin | |
+| DELETE | `/teachers/{id}` | Admin | |
+
+## Classes
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/classes` | Đã đăng nhập | |
+| GET | `/classes/{id}` | Đã đăng nhập | |
+| POST | `/classes` | Admin | `{ classId, className, room?, studentCount?, schedule? }` |
+| PUT | `/classes/{id}` | Admin | |
+| DELETE | `/classes/{id}` | Admin | |
+
+## Grades
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/grades` | Teacher | |
+| GET | `/grades/{id}` | Teacher | |
+| POST | `/grades` | Teacher | `{ studentId, teacherId, subject, score (0-10), semester?, note? }` — gửi email điểm cho sinh viên |
+| PUT | `/grades/{id}` | Teacher | `{ subject?, semester?, score?, note? }` |
+| DELETE | `/grades/{id}` | Admin | |
+
+## Materials
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/materials` | Student, Teacher | `{ materials, count }` |
+| GET | `/materials/{id}` | Student, Teacher | |
+| POST | `/materials/upload-url` | Teacher | `{ fileName, contentType, type }` → `{ uploadUrl, s3Key }` |
+| POST | `/materials/metadata` | Teacher | `{ title, subject, type, fileName, s3Key }` |
+| PUT | `/materials/{id}` | Teacher | `{ title?, subject?, type?, s3Key?, fileName? }` — `s3Key` mới thay file và xoá file cũ |
+| DELETE | `/materials/{id}` | Teacher | Xoá cả file |
+
+## Files (URL có chữ ký — không cần Authorization)
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| PUT | `/files/upload?key&ct&exp&sig` | Body là nội dung file; `Content-Type` phải khớp `ct`; tối đa `MAX_UPLOAD_MB` |
+| GET | `/files/download?key&exp&sig` | |
+
+## Admin
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/admin/users` | Admin | `{ users: [{ username, email, name, status, enabled, groups, createdAt }] }` |
+| POST | `/admin/users` | Admin | `{ email, role, password?, name? }` — mật khẩu là mật khẩu tạm (trống → tự sinh, gửi qua email) |
+| PUT | `/admin/users/{username}` | Admin | `{ role?, enabled? }` |
+| POST | `/admin/users/{username}/toggle` | Admin | `{ enabled: boolean }` |
+| DELETE | `/admin/users/{username}` | Admin | |
+| GET | `/admin/logs?limit=&filterPattern=` | Admin | `{ logs: [{ timestamp, level, message, ip }] }` |
+
+Admin không thể tự xoá / tự khoá / tự hạ quyền, và hệ thống luôn giữ ít nhất một Admin đang hoạt động.
+
+## Khác
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/health` | `{ status: "ok" }` |

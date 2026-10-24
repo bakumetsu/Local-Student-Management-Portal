@@ -1,41 +1,28 @@
-import { success, error } from '../../common/response.js'
-import { getUploadSignedUrl, BUCKET_NAME } from '../../common/s3.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { getUploadSignedUrl, safeFileName, safeSegment } from '../../common/storage.js'
+import { requireRole } from '../../common/authMiddleware.js'
+import { canAccessStudent } from '../access.js'
 
 const baseHandler = async (event) => {
   try {
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
     const { fileName, contentType, studentId, documentId } = data
     if (!fileName || !studentId) return error('Thiếu fileName hoặc studentId', 400)
+    if (!canAccessStudent(event, studentId)) return error('Không có quyền upload hồ sơ cho sinh viên này', 403)
 
-    const docId = documentId || `DOC${Date.now()}`
-    const key = `documents/${studentId}/${docId}-${fileName}`
+    const docId = safeSegment(documentId || `DOC${Date.now()}`)
+    const key = `documents/${safeSegment(studentId)}/${docId}-${safeFileName(fileName)}`
     const uploadUrl = await getUploadSignedUrl(key, contentType || 'application/octet-stream')
 
     return success({
       uploadUrl,
       s3Key: key,
-      fileUrl: `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`
+      documentId: docId
     })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-const authHandler = withAuth(baseHandler)
-
-const StaffOrStudentRoleHandler = async (event, context, callback) => {
-  const authorizer = event.requestContext?.authorizer
-  if (!authorizer) return callback(null, error('Thiếu authorizer', 401))
-
-  const { claims } = authorizer
-  const userGroups = claims?.['cognito:groups'] || []
-  const allowedRoles = ['Student', 'Staff']
-  const hasRole = userGroups.some(role => allowedRoles.includes(role))
-  if (!hasRole) return callback(null, error('Không có quyền truy cập. Chỉ Student hoặc Staff được phép.', 403))
-
-  return await handler(event, context)
-}
-
-export const handler = StaffOrStudentRoleHandler
+// Chỉ Student hoặc Staff (Admin luôn được phép).
+export const handler = requireRole(['Student', 'Staff'])(baseHandler)

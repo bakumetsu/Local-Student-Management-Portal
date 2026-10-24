@@ -2,20 +2,18 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Sidebar from '../../components/Sidebar'
-import api from '../../services/api'
+import { getMaterialById } from '../../services/materialService'
 
 export default function MaterialDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [material, setMaterial] = useState(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get(`/materials`)
-      .then(res => {
-        const list = res.data.materials || res.data || []
-        setMaterial(list.find(m => m.id === id))
-      })
-      .catch(err => console.error(err))
+    getMaterialById(id)
+      .then(res => setMaterial(res.data))
+      .catch(err => setError(err.message || 'Không thể tải tài liệu.'))
   }, [id])
 
   return (
@@ -50,7 +48,7 @@ export default function MaterialDetail() {
                 </a>
               </div>
             </div>
-          ) : <p>Đang tải chi tiết tài liệu...</p>}
+          ) : error ? <div className="alert alert-danger">{error}</div> : <p>Đang tải chi tiết tài liệu...</p>}
         </main>
       </div>
     </div>

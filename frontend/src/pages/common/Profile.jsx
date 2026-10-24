@@ -25,7 +25,7 @@ export default function Profile() {
             ...prev,
             email: attrs.email || '',
             name: attrs.name || attrs.email || 'Hệ thống Admin',
-            phone: attrs.phone_number || '0987654321'
+            phone: attrs.phone_number || ''
           }))
         }
       } catch (e) {

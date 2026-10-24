@@ -1,21 +1,16 @@
 // materials/getMaterials/index.js
-import { ScanCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, fromError } from '../../common/response.js'
+import { withDownloadUrl } from '../../common/storage.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async () => {
   try {
-    const res = await docClient.send(new ScanCommand({ TableName: TABLE.MATERIALS }))
-    return success({ materials: res.Items || [], count: res.Count || 0 })
+    const materials = await Promise.all(table(TABLE.MATERIALS).scan().map(withDownloadUrl))
+    return success({ materials, count: materials.length })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Student')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole(['Student', 'Teacher'])(baseHandler)

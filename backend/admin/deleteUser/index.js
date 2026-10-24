@@ -1,9 +1,7 @@
-import { CognitoIdentityProviderClient, AdminDeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
-
-const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' })
-const userPoolId = process.env.COGNITO_USER_POOL_ID || ''
+import { success, error, fromError } from '../../common/response.js'
+import { getUser, deleteUser } from '../../common/users.js'
+import { requireRole } from '../../common/authMiddleware.js'
+import { checkAdminChange } from '../guards.js'
 
 const baseHandler = async (event) => {
   try {
@@ -11,21 +9,19 @@ const baseHandler = async (event) => {
     if (!username) {
       return error('Thiếu tham số username', 400)
     }
-    if (!userPoolId) {
-      return error('Thiếu cấu hình Cognito User Pool ID', 400)
-    }
 
-    await cognitoClient.send(new AdminDeleteUserCommand({
-      UserPoolId: userPoolId,
-      Username: username
-    }))
+    const target = getUser(username)
+    if (!target) return error('Không tìm thấy tài khoản', 404)
 
+    const blocked = checkAdminChange(event, target, { removing: true })
+    if (blocked) return error(blocked, 400)
+
+    deleteUser(username)
     return success({ message: 'Xóa tài khoản thành công' })
   } catch (err) {
-    console.error('Delete user error:', err)
-    return error(err.message || 'Lỗi máy chủ khi xóa tài khoản', 500)
+    return fromError(err, 'Lỗi máy chủ khi xóa tài khoản')
   }
 }
 
 // Chỉ cho phép Admin truy cập
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

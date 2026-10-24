@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../../components/Navbar'
 import Sidebar from '../../components/Sidebar'
-import { getCloudWatchLogs } from '../../services/adminService'
+import { getActivityLogs } from '../../services/adminService'
 
 export default function AdminLogs() {
   const [logs, setLogs] = useState([])
@@ -16,13 +16,13 @@ export default function AdminLogs() {
     setLoading(true)
     setError('')
     try {
-      const res = await getCloudWatchLogs({
+      const res = await getActivityLogs({
         filterPattern: search || undefined
       })
       setLogs(res.data.logs || res.data || [])
     } catch (err) {
       console.error(err)
-      setError('Không thể tải log từ CloudWatch.')
+      setError('Không thể tải nhật ký hệ thống.')
     } finally {
       setLoading(false)
     }
@@ -34,7 +34,7 @@ export default function AdminLogs() {
 
   const handleRefresh = () => {
     load()
-    setMessage('Nhật ký log CloudWatch đã được làm mới thành công!')
+    setMessage('Nhật ký hệ thống đã được làm mới thành công!')
   }
 
   const handleExport = () => {
@@ -44,7 +44,7 @@ export default function AdminLogs() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `cloudwatch_logs_${Date.now()}.csv`);
+    link.setAttribute("download", `system_logs_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -60,7 +60,7 @@ export default function AdminLogs() {
     <div className="app-layout">
       <Sidebar />
       <div className="main-wrapper">
-        <Navbar title="Nhật Ký Hoạt Động (CloudWatch Live)" />
+        <Navbar title="Nhật Ký Hoạt Động (Live)" />
         <main className="main-content">
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 className="page-title" style={{ margin: 0 }}>System Activity Logs</h2>

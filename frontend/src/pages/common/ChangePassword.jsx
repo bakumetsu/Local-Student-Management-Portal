@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Sidebar from '../../components/Sidebar'
+import { changePassword } from '../../services/authService'
 
 export default function ChangePassword() {
   const navigate = useNavigate()
@@ -10,18 +11,26 @@ export default function ChangePassword() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
       setError('Mật khẩu nhập lại không khớp.')
       return
     }
-    setMessage('Cập nhật mật khẩu thành công!')
+    setLoading(true)
     setError('')
-    setTimeout(() => {
-      navigate('/profile')
-    }, 1500)
+    try {
+      await changePassword(oldPassword, newPassword)
+      setMessage('Cập nhật mật khẩu thành công!')
+      setTimeout(() => {
+        navigate('/profile')
+      }, 1500)
+    } catch (err) {
+      setError(err.message || 'Không thể đổi mật khẩu.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -71,7 +80,7 @@ export default function ChangePassword() {
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-outline" onClick={() => navigate('/profile')}>Hủy</button>
-                <button type="submit" className="btn btn-primary">Cập nhật mật khẩu</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>Cập nhật mật khẩu</button>
               </div>
             </form>
           </div>

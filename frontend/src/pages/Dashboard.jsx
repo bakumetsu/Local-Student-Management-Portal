@@ -61,11 +61,11 @@ export default function Dashboard() {
                     <div className="stat-value">{teachers.length}</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Tài khoản Cognito</div>
+                    <div className="stat-label">Tài khoản người dùng</div>
                     <div className="stat-value">Đang đồng bộ</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Nhóm Quyền Cognito</div>
+                    <div className="stat-label">Nhóm quyền</div>
                     <div className="stat-value">3 Groups</div>
                   </div>
                 </div>

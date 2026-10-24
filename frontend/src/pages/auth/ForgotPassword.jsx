@@ -1,19 +1,28 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { forgotPassword } from '../../services/authService'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setMessage('Yêu cầu gửi mã OTP thành công. Vui lòng check hòm thư email của bạn.')
-    setTimeout(() => {
-      navigate('/verify-code', { state: { email } })
-    }, 1500)
+    setError('')
+    try {
+      await forgotPassword(email)
+      setMessage('Yêu cầu gửi mã OTP thành công. Vui lòng check hòm thư email của bạn.')
+      setTimeout(() => {
+        navigate('/verify-code', { state: { email } })
+      }, 1500)
+    } catch (err) {
+      setError(err.message || 'Không thể gửi mã xác nhận. Vui lòng thử lại.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -24,6 +33,7 @@ export default function ForgotPassword() {
           Nhập email đăng ký của bạn. Chúng tôi sẽ gửi mã OTP xác nhận về hòm thư của bạn.
         </p>
         {message && <div className="alert alert-success">{message}</div>}
+        {error && <div className="alert alert-danger">{error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '20px' }}>

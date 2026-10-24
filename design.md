@@ -1,4 +1,4 @@
-# DESIGN.md — AWS Student Management Portal
+# DESIGN.md — Student Management Portal
 
 ## 1. Mục đích tài liệu
 

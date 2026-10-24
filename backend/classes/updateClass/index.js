@@ -1,7 +1,6 @@
-import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
@@ -10,52 +9,33 @@ const baseHandler = async (event) => {
       return error('Thiếu tham số id lớp học', 400)
     }
 
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
     const { className, room, studentCount, schedule } = data
 
-    const updateExpression = []
-    const expressionAttributeNames = {}
-    const expressionAttributeValues = {}
-
+    const updates = {}
     if (className !== undefined) {
-      updateExpression.push('#name = :name')
-      expressionAttributeNames['#name'] = 'className'
-      expressionAttributeValues[':name'] = className
+      if (String(className).trim() === '') return error('className không được để trống', 400)
+      updates.className = className
     }
-    if (room !== undefined) {
-      updateExpression.push('room = :room')
-      expressionAttributeValues[':room'] = room
-    }
+    if (room !== undefined) updates.room = room
     if (studentCount !== undefined) {
-      updateExpression.push('studentCount = :cnt')
-      expressionAttributeValues[':cnt'] = Number(studentCount)
+      const count = Number(studentCount)
+      if (!Number.isFinite(count) || count < 0) return error('studentCount phải là số không âm', 400)
+      updates.studentCount = count
     }
-    if (schedule !== undefined) {
-      updateExpression.push('schedule = :sch')
-      expressionAttributeValues[':sch'] = schedule
-    }
+    if (schedule !== undefined) updates.schedule = schedule
 
-    if (updateExpression.length === 0) {
+    if (Object.keys(updates).length === 0) {
       return error('Không có thông tin nào để cập nhật', 400)
     }
 
-    updateExpression.push('updatedAt = :upd')
-    expressionAttributeValues[':upd'] = new Date().toISOString()
+    const updated = table(TABLE.CLASSES).update(classId, { ...updates, updatedAt: new Date().toISOString() })
+    if (!updated) return error('Không tìm thấy lớp học', 404)
 
-    const res = await docClient.send(new UpdateCommand({
-      TableName: TABLE.CLASSES,
-      Key: { id: classId },
-      UpdateExpression: `SET ${updateExpression.join(', ')}`,
-      ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ReturnValues: 'ALL_NEW'
-    }))
-
-    return success({ message: 'Cập nhật lớp học thành công', class: res.Attributes })
+    return success({ message: 'Cập nhật lớp học thành công', class: updated })
   } catch (err) {
-    console.error('Update class error:', err)
-    return error(err.message || 'Lỗi máy chủ khi cập nhật lớp học', 500)
+    return fromError(err, 'Lỗi máy chủ khi cập nhật lớp học')
   }
 }
 
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

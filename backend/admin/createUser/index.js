@@ -1,49 +1,30 @@
-import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminAddUserToGroupCommand } from '@aws-sdk/client-cognito-identity-provider'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
-
-const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' })
-const userPoolId = process.env.COGNITO_USER_POOL_ID || ''
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { publicUser, getUser, ROLES } from '../../common/users.js'
+import { provisionAccount } from '../../common/accounts.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
-    const { email, role, password } = data
+    const data = parseBody(event)
+    const { email, role, password, name } = data
     if (!email || !role) {
       return error('Thiếu email hoặc role', 400)
     }
-    if (!userPoolId) {
-      return error('Thiếu cấu hình Cognito User Pool ID', 400)
+    if (!ROLES.includes(role)) {
+      return error(`Role không hợp lệ. Cho phép: ${ROLES.join(', ')}`, 400)
+    }
+    if (getUser(email)) {
+      return error('Tài khoản với email này đã tồn tại', 409)
     }
 
-    const createParams = {
-      UserPoolId: userPoolId,
-      Username: email,
-      UserAttributes: [
-        { Name: 'email', Value: email },
-        { Name: 'email_verified', Value: 'true' }
-      ],
-      DesiredDeliveryMediums: ['EMAIL']
-    }
-    if (password) {
-      createParams.TemporaryPassword = password
-    }
+    // Mật khẩu (nếu có) là mật khẩu tạm: người dùng phải đổi ở lần đăng nhập đầu.
+    const user = await provisionAccount({ email, role, name: name || '', password: password || undefined })
 
-    const createRes = await cognitoClient.send(new AdminCreateUserCommand(createParams))
-
-    // Gán nhóm quyền
-    await cognitoClient.send(new AdminAddUserToGroupCommand({
-      UserPoolId: userPoolId,
-      Username: email,
-      GroupName: role
-    }))
-
-    return success({ message: 'Tạo tài khoản thành công', user: createRes.User }, 201)
+    return success({ message: 'Tạo tài khoản thành công', user: publicUser(user) }, 201)
   } catch (err) {
-    console.error('Create user error:', err)
-    return error(err.message || 'Lỗi máy chủ khi tạo tài khoản', 500)
+    return fromError(err, 'Lỗi máy chủ khi tạo tài khoản')
   }
 }
 
 // Chỉ cho phép Admin truy cập
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

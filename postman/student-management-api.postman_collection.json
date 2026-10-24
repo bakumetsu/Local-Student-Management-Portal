@@ -121,7 +121,7 @@
     }
   ],
   "variable": [
-    { "key": "apiUrl", "value": "https://your-api-id.execute-api.ap-southeast-1.amazonaws.com/prod" },
-    { "key": "idToken", "value": "YOUR_COGNITO_ID_TOKEN" }
+    { "key": "apiUrl", "value": "http://localhost:8080/api" },
+    { "key": "idToken", "value": "PASTE_idToken_FROM_POST_/api/auth/login" }
   ]
 }

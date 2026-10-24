@@ -50,7 +50,7 @@ export default function AdminRoles() {
         <Navbar title="Quản Lý Vai Trò và Phân Nhóm Quyền" />
         <main className="main-content">
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 className="page-title" style={{ margin: 0 }}>Cognito Groups Status</h2>
+            <h2 className="page-title" style={{ margin: 0 }}>User Groups Status</h2>
           </div>
 
           {message && <div className="alert alert-success" style={{ marginBottom: '15px' }}>{message}</div>}

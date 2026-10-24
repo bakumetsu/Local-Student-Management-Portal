@@ -1,51 +1,34 @@
 // backend/documents/getStudentDocuments/index.js
-import { QueryCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
-
-const DOCUMENTS_TABLE = process.env.DOCUMENTS_TABLE || 'StudentDocuments'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, fromError } from '../../common/response.js'
+import { withDownloadUrl } from '../../common/storage.js'
+import { requireRole } from '../../common/authMiddleware.js'
+import { canAccessStudent } from '../access.js'
 
 const baseHandler = async (event) => {
   try {
-    // Extract studentId from path parameters (based on new endpoint: /students/{studentId}/documents)
-    let studentId = event.pathParameters?.studentId || event.pathParameters?.id
-
-    // Also support old endpoint: /documents/metadata with studentId in body
-    if (!studentId && event.body) {
-      const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
-      studentId = data.studentId
-    }
+    // Endpoint mới: /students/{studentId}/documents
+    // Endpoint cũ: /documents/metadata?studentId=...
+    const studentId = event.pathParameters?.studentId || event.pathParameters?.id ||
+      event.queryStringParameters?.studentId
 
     if (!studentId) {
-      return error('Thiếu studentId trong path parameters hoặc body', 400)
+      return error('Thiếu studentId trong path hoặc query', 400)
     }
+    if (!canAccessStudent(event, studentId)) return error('Không có quyền xem hồ sơ của sinh viên này', 403)
 
-    // Query documents for the specific student
-    const queryParams = {
-      TableName: DOCUMENTS_TABLE,
-      KeyConditionExpression: 'studentId = :studentId',
-      ExpressionAttributeValues: {
-        ':studentId': studentId
-      }
-    }
-
-    const result = await docClient.send(new QueryCommand(queryParams))
+    const items = table(TABLE.DOCUMENTS).findBy('studentId', String(studentId))
+    // Mỗi lần đọc cấp URL tải về mới có chữ ký (thay cho URL S3 công khai).
+    const documents = await Promise.all(items.map(withDownloadUrl))
 
     return success({
-      documents: result.Items || [],
-      count: result.Count || 0,
-      studentId: studentId
+      documents,
+      count: documents.length,
+      studentId: String(studentId)
     })
-
   } catch (err) {
-    console.error('getStudentDocuments error:', err)
-    return error(err.message || 'Lỗi máy chủ khi lấy tài liệu', 500)
+    return fromError(err, 'Lỗi máy chủ khi lấy tài liệu')
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Student')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Student')(baseHandler)

@@ -77,7 +77,7 @@ export default function StudentDetail() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h2 className="card-title" style={{ margin: 0 }}>Danh sách hồ sơ học bạ (S3 Bucket)</h2>
+          <h2 className="card-title" style={{ margin: 0 }}>Danh sách hồ sơ học bạ</h2>
           {(isAdmin || isTeacher) && (
             <Link to={`/students/${id}/documents`} className="btn btn-outline btn-sm"><Upload size={16} /> Upload hồ sơ</Link>
           )}

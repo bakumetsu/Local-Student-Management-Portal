@@ -26,9 +26,11 @@ export default function UploadMaterial() {
 
     setLoading(true)
     try {
-      const { data } = await createUploadUrl({ fileName: file.name, contentType: file.type, type })
-      await fetch(data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
-      await saveMaterialMetadata({ title, subject, type, fileName: file.name, s3Key: data.s3Key, fileUrl: data.fileUrl })
+      const { data } = await createUploadUrl({ fileName: file.name, contentType: file.type || 'application/octet-stream', type })
+      const contentType = file.type || 'application/octet-stream'
+      const putRes = await fetch(data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file })
+      if (!putRes.ok) throw new Error((await putRes.json().catch(() => ({}))).message || 'Không thể tải file lên')
+      await saveMaterialMetadata({ title, subject, type, fileName: file.name, s3Key: data.s3Key })
       setStatus({ type: 'success', message: 'Tải tài liệu lên thành công!' })
       setTitle(''); setSubject(''); setFile(null)
       setTimeout(() => {
@@ -46,7 +48,7 @@ export default function UploadMaterial() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Upload tài liệu học tập</h1>
-          <p className="page-description">Tải tài liệu (PDF, slide...) lên hệ thống S3.</p>
+          <p className="page-description">Tải tài liệu (PDF, slide...) lên hệ thống.</p>
         </div>
       </div>
 

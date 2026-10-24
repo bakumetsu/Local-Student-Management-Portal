@@ -1,20 +1,19 @@
-import { PutCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
 import { validateClass } from '../../common/validators.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
     const errs = validateClass(data)
     if (errs.length > 0) {
       return error(errs.join('; '), 400)
     }
 
     const item = {
-      id: data.classId,
-      classId: data.classId,
+      id: String(data.classId),
+      classId: String(data.classId),
       className: data.className,
       room: data.room || '',
       studentCount: data.studentCount !== undefined ? Number(data.studentCount) : 0,
@@ -23,12 +22,11 @@ const baseHandler = async (event) => {
       updatedAt: new Date().toISOString()
     }
 
-    await docClient.send(new PutCommand({ TableName: TABLE.CLASSES, Item: item }))
+    table(TABLE.CLASSES).insert(item)
     return success({ message: 'Tạo lớp học thành công', class: item }, 201)
   } catch (err) {
-    console.error('Create class error:', err)
-    return error(err.message || 'Lỗi máy chủ khi tạo lớp học', 500)
+    return fromError(err, 'Lỗi máy chủ khi tạo lớp học')
   }
 }
 
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

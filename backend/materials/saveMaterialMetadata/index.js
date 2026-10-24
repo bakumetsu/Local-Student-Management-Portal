@@ -1,39 +1,39 @@
 // materials/saveMaterialMetadata/index.js
-import { PutCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { sendMessage } from '../../common/sqs.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import fs from 'node:fs'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { sendMessage } from '../../common/queue.js'
+import { resolveKey, withDownloadUrl } from '../../common/storage.js'
+import { requireRole, currentUser } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
-    const { title, subject, type, fileName, s3Key, fileUrl } = data
+    const data = parseBody(event)
+    const { title, subject, type, fileName, s3Key } = data
     if (!title || !subject || !s3Key) return error('Thiếu title, subject hoặc s3Key', 400)
+    if (!String(s3Key).startsWith('materials/')) return error('s3Key không hợp lệ', 400)
+    if (!fs.existsSync(resolveKey(s3Key))) return error('File chưa được upload', 400)
 
+    const now = new Date().toISOString()
     const item = {
-      id: `${type}-${Date.now()}`,
+      id: `${type || 'other'}-${Date.now()}`,
       title,
       subject,
       type: type || 'other',
       fileName,
       s3Key,
-      fileUrl,
-      createdAt: new Date().toISOString()
+      uploadedBy: currentUser(event)?.email || '',
+      createdAt: now,
+      uploadedAt: now
     }
 
-    await docClient.send(new PutCommand({ TableName: TABLE.MATERIALS, Item: item }))
+    table(TABLE.MATERIALS).insert(item)
     await sendMessage({ type: 'MATERIAL_UPLOADED', material: item })
 
-    return success({ message: 'Lưu tài liệu thành công', material: item }, 201)
+    return success({ message: 'Lưu tài liệu thành công', material: await withDownloadUrl(item) }, 201)
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Admin')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Teacher')(baseHandler)

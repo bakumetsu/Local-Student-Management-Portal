@@ -1,7 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { login, getSessionTokens } from './services/authService'
+import { getSessionTokens } from './services/authService'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -58,10 +58,6 @@ import ClassDetail from './pages/teachers/ClassDetail'
 import Forbidden from './pages/errors/Forbidden'
 import NotFound from './pages/errors/NotFound'
 
-// Demo account - mỗi lần khởi chạy sẽ đăng nhập lại
-const DEMO_USERNAME = 'admin@example.com'
-const DEMO_PASSWORD = 'Abc12345!'
-
 function AppInit({ children }) {
   const [authState, setAuthState] = useState('initializing') // 'initializing' | 'authenticated' | 'login-needed'
 
@@ -88,7 +84,7 @@ function AppInit({ children }) {
     return (
       <div className="login-page">
         <div className="login-card">
-          <h1 className="login-title">AWS Student Portal</h1>
+          <h1 className="login-title">Student Portal</h1>
           <p className="login-subtitle">Đang khởi tạo...</p>
         </div>
       </div>

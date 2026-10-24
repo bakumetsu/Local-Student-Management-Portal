@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { resetPassword } from '../../services/authService'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -10,18 +11,30 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleReset = (e) => {
+  const handleReset = async (e) => {
     e.preventDefault()
+    if (!email || !code) {
+      setError('Thiếu email hoặc mã xác nhận. Vui lòng thực hiện lại bước Quên mật khẩu.')
+      return
+    }
     if (password !== confirmPassword) {
       setError('Mật khẩu nhập lại không khớp.')
       return
     }
-    setMessage('Mật khẩu đã được thiết lập lại thành công!')
+    setLoading(true)
     setError('')
-    setTimeout(() => {
-      navigate('/login')
-    }, 1500)
+    try {
+      await resetPassword(email, code, password)
+      setMessage('Mật khẩu đã được thiết lập lại thành công!')
+      setTimeout(() => {
+        navigate('/login')
+      }, 1500)
+    } catch (err) {
+      setError(err.message || 'Không thể đặt lại mật khẩu.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -56,8 +69,8 @@ export default function ResetPassword() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button type="submit" className="btn btn-primary">Đặt lại mật khẩu</button>
-            <button type="button" className="btn btn-outline" onClick={() => navigate('/verify-code')}>Quay lại</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>Đặt lại mật khẩu</button>
+            <button type="button" className="btn btn-outline" onClick={() => navigate('/verify-code', { state: { email } })}>Quay lại</button>
           </div>
         </form>
       </div>

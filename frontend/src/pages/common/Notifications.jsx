@@ -4,7 +4,7 @@ import Sidebar from '../../components/Sidebar'
 
 const mockNotifications = [
   { id: 1, title: 'Hệ thống cập nhật thông tin học tập', body: 'Lịch học quân sự đợt 2 bắt đầu từ ngày 15/09.', date: '10/09/2026', read: false },
-  { id: 2, title: 'Thông báo điểm thi môn học', body: 'Điểm số môn Lập trình ứng dụng AWS đã được công bố.', date: '08/09/2026', read: true }
+  { id: 2, title: 'Thông báo điểm thi môn học', body: 'Điểm số môn Lập trình ứng dụng Web đã được công bố.', date: '08/09/2026', read: true }
 ]
 
 export default function Notifications() {

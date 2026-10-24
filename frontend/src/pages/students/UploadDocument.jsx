@@ -39,18 +39,19 @@ export default function UploadDocument() {
         docType
       })
 
-      await fetch(data.uploadUrl, {
+      const putRes = await fetch(data.uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file
       })
+      if (!putRes.ok) throw new Error((await putRes.json().catch(() => ({}))).message || 'Không thể tải file lên')
 
       await saveDocumentMetadata({
         studentId,
         fileName: file.name,
         docType,
         s3Key: data.s3Key,
-        fileUrl: data.fileUrl
+        documentId: data.documentId
       })
 
       setStatus({ type: 'success', message: 'Tải lên thành công! Email xác nhận đang được gửi.' })
@@ -67,7 +68,7 @@ export default function UploadDocument() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Upload tài liệu</h1>
-          <p className="page-description">Tải hồ sơ sinh viên lên S3 bằng Presigned URL.</p>
+          <p className="page-description">Tải hồ sơ sinh viên lên hệ thống bằng URL upload có chữ ký.</p>
         </div>
       </div>
 
@@ -103,7 +104,7 @@ export default function UploadDocument() {
         <h2 className="card-title">Hướng dẫn</h2>
         <p className="card-description">
           <FileText size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-          File được upload trực tiếp lên S3 qua Presigned URL. Sau khi upload, metadata sẽ lưu vào DynamoDB và hệ thống gửi email xác nhận qua SQS + SES.
+          File được upload trực tiếp lên kho lưu trữ của server qua URL có chữ ký (hết hạn sau 5 phút). Sau khi upload, metadata được lưu vào database và hệ thống gửi email xác nhận qua hàng đợi nội bộ + SMTP.
         </p>
       </div>
     </Layout>

@@ -27,7 +27,7 @@ export default function AdminTeacherList() {
 
   const handleRefresh = () => {
     load()
-    setMessage('Đã làm mới danh sách giáo viên từ DynamoDB.')
+    setMessage('Đã làm mới danh sách giáo viên.')
   }
 
   const filtered = teachers.filter(t => {

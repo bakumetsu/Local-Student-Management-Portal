@@ -1,152 +1,96 @@
-# Hướng Dẫn Cấu Hình và Chạy Frontend Sau Khi Lấy Code Từ GitHub
+# Hướng Dẫn Cài Đặt và Chạy
 
-Tài liệu này hướng dẫn chi tiết các bước cài đặt môi trường, cấu hình dịch vụ AWS và khởi chạy **Frontend** của dự án **AWS Student Management Portal** sau khi bạn nhân bản (clone) mã nguồn từ GitHub về máy tính cá nhân.
+## 1. Yêu cầu
 
----
+- **Node.js ≥ 22.13** (khuyên dùng bản LTS 22 hoặc 24): https://nodejs.org — chọn bộ cài chính thức (cần cho bước đóng gói `.exe`).
+- Git.
 
-## 1. Yêu Cầu Hệ Thống & Công Cụ Cần Cài Đặt
+Không cần tài khoản đám mây, database server hay dịch vụ trả phí nào.
 
-Trước khi bắt đầu, hãy đảm bảo máy tính của bạn đã cài đặt các công cụ sau:
+## 2. Cài đặt
 
-### 1.1 Node.js & npm (Môi trường chạy React/Vite)
-* **Node.js**: Phiên bản `>= 18.x` (Khuyến nghị dùng bản LTS mới nhất như 20.x).
-* **npm**: Phiên bản `>= 9.x` (Tự động cài đặt đi kèm Node.js).
-* **Kiểm tra phiên bản đã cài**:
-  ```bash
-  node -v
-  npm -v
-  ```
-
-### 1.2 AWS CLI (Công cụ dòng lệnh AWS - Cần khi deploy lên S3/CloudFront)
-* Tải xuống và cài đặt từ trang chủ AWS:
-  * **Windows**: Tải file cài đặt [AWS CLI MSI Installer](https://awscli.amazonaws.com/AWSCLIV2.msi).
-* **Kiểm tra phiên bản đã cài**:
-  ```bash
-  aws --version
-  ```
-
----
-
-## 2. Các Bước Cấu Hình và Chạy Local Frontend
-
-Sau khi lấy mã nguồn về từ GitHub, bạn thực hiện các bước sau để kết nối và khởi chạy ở local:
-
-### Bước 1: Cài đặt các thư viện phụ thuộc (Dependencies)
-Mở cửa sổ terminal, di chuyển vào thư mục `frontend` của dự án và chạy lệnh:
 ```bash
-cd frontend
-npm install
+git clone <repo-url>
+cd Local-Student-Management-Portal
+npm run install:all
 ```
 
-### Bước 2: Tạo và cấu hình file môi trường `.env`
-Tạo một tệp tin mới có tên là `.env` nằm trực tiếp trong thư mục `frontend` (`frontend/.env`). Cấu hình các thông số kết nối tới AWS theo thông tin hệ thống đã triển khai như sau:
+## 3. Chạy
+
+### Chạy như production (một cổng duy nhất)
+
+```bash
+npm run build      # build giao diện vào frontend/dist
+npm run seed       # (tuỳ chọn) dữ liệu mẫu: 4 sinh viên, 2 giáo viên, 2 lớp, điểm, tài liệu
+npm start          # http://localhost:8080
+```
+
+Đăng nhập bằng `admin@example.com` / `Abc12345!` — hệ thống yêu cầu đổi mật khẩu ở lần đầu.
+
+### Chạy chế độ phát triển
+
+Mở hai terminal:
+
+```bash
+npm run dev:api    # API tại http://localhost:8080 (tự khởi động lại khi sửa code)
+npm run dev:web    # giao diện tại http://localhost:3000 (Vite HMR, proxy /api sang :8080)
+```
+
+## 4. Email
+
+Mặc định không gửi email thật: nội dung (mật khẩu tạm, mã OTP quên mật khẩu, thông báo) được ghi vào `data/logs/outbox.log`.
+
+Để gửi thật, cấu hình SMTP trong `.env` (ví dụ Gmail App Password, Mailgun, Postfix tự host...):
 
 ```env
-# AWS Cognito Configuration
-VITE_COGNITO_USER_POOL_ID=us-east-1_7SwNQ0qYm
-VITE_COGNITO_CLIENT_ID=6o5g3hcus9ehbmk90acqeuplau
-
-# API Gateway Endpoint (URL API Backend thực tế đã triển khai)
-VITE_API_ENDPOINT=https://9k9i3ukwdh.execute-api.us-east-1.amazonaws.com/prod
-
-# AWS Region
-VITE_AWS_REGION=us-east-1
-
-# App Configuration
-VITE_APP_NAME=AWS Student Management Portal
-VITE_APP_VERSION=1.0.0
-VITE_ENABLE_NOTIFICATIONS=true
-VITE_ENABLE_FILE_UPLOAD=true
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=user
+SMTP_PASS=secret
+FROM_EMAIL=portal@example.com
+PUBLIC_URL=https://portal.example.com
 ```
 
-> [!IMPORTANT]
-> Toàn bộ các biến cấu hình sử dụng trong React thông qua Vite phải bắt đầu bằng tiền tố `VITE_`. Nếu đặt tên biến thiếu tiền tố này, ứng dụng sẽ không đọc được giá trị và không thể kết nối tới các dịch vụ AWS.
+Thử nghiệm cục bộ với [Mailpit](https://github.com/axllent/mailpit): `SMTP_HOST=localhost`, `SMTP_PORT=1025`.
 
-### Bước 3: Khởi chạy local server
-Khởi động ứng dụng React bằng lệnh:
+## 5. Đóng gói file thực thi
+
 ```bash
-npm run dev
+npm run build:exe
 ```
-Ứng dụng sẽ được khởi tạo tại địa chỉ mặc định: `http://localhost:5173` (hoặc cổng khác tuỳ cấu hình hiển thị trên terminal). Mở trình duyệt truy cập link trên để kiểm tra kết nối.
 
----
+Script `scripts/build-exe.mjs` sẽ:
 
-## 3. Cấu Hình AWS CLI Để Triển Khai (Deploy) Lên Cloud
+1. Cài dependencies còn thiếu (bỏ qua bằng `-- --skip-install`).
+2. Build frontend (Vite).
+3. Bundle backend + thư viện thành một file bằng esbuild.
+4. Tạo blob Node SEA, nhúng toàn bộ frontend.
+5. Sao chép binary Node đang dùng và tiêm blob bằng postject.
 
-Khi bạn thực hiện chỉnh sửa code ở local và muốn deploy bản build mới lên môi trường cloud (để cập nhật trang **https://d3th0yl82lu593.cloudfront.net**), thực hiện cấu hình AWS CLI như sau:
+Kết quả nằm ở `release/` (đổi bằng `-- --out=<thư mục>`), ví dụ `release/student-portal-win32-x64.exe` (~80–100 MB vì chứa cả Node runtime).
 
-### Bước 1: Cấu hình thông tin xác thực AWS Credentials
-Chạy lệnh sau trên terminal của máy tính:
-```bash
-aws configure
+Lưu ý:
+
+- Build trên hệ điều hành nào thì ra binary cho hệ điều hành đó. Muốn bản Linux/macOS, chạy lệnh trên máy Linux/macOS (hoặc CI).
+- Trên Windows, file `.exe` không có chữ ký số (trừ khi có `signtool` và bạn tự ký) nên SmartScreen có thể cảnh báo lần đầu.
+- Cần dùng binary Node chính thức (bộ cài từ nodejs.org, nvm, fnm...). Một số bản Node đóng gói lại không hỗ trợ SEA.
+
+### Chạy bản đóng gói
+
 ```
-Hệ thống sẽ yêu cầu nhập các thông tin:
-1. **AWS Access Key ID**: Nhập Access Key từ IAM User của bạn (được cấp quyền quản lý S3 và CloudFront).
-2. **AWS Secret Access Key**: Nhập Secret Key tương ứng.
-3. **Default region name**: `us-east-1` (hoặc region mà bạn deploy hạ tầng).
-4. **Default output format**: `json`
-
-**Xác minh thông tin kết nối AWS thành công**:
-```bash
-aws sts get-caller-identity
+student-portal-win32-x64.exe
 ```
-Nếu hiện thông tin `Account` và `Arn` của User, chứng tỏ bạn đã đăng nhập thành công.
 
-### Bước 2: Build mã nguồn cho Production
-Trước khi deploy, biên dịch toàn bộ source code của Frontend:
-```bash
-npm run build
-```
-Thư mục chứa bản build đóng gói là `frontend/dist` sẽ được sinh ra.
+- Dữ liệu tạo ở `data\` cạnh file `.exe`.
+- Cấu hình: tạo file `.env` cạnh file `.exe` (xem bảng biến môi trường trong README) hoặc đặt biến môi trường.
+- Dừng bằng `Ctrl+C`.
 
-### Bước 3: Đồng bộ lên S3 và refresh CloudFront
-Chạy các lệnh AWS CLI từ thư mục `frontend` để triển khai:
+## 6. Xử lý sự cố
 
-1. **Đồng bộ hóa thư mục dist lên S3 bucket của frontend**:
-   ```bash
-   aws s3 sync dist/ s3://student-portal-frontend-147997148454 --delete
-   ```
-   *(Lệnh này sẽ upload tệp mới lên S3 và xóa các tệp cũ không còn sử dụng trên bucket)*
-
-2. **Xóa bộ nhớ đệm (Invalidation) trên CloudFront để cập nhật ngay cho người dùng**:
-   ```bash
-   aws cloudfront create-invalidation --distribution-id E39TFB7INWHA6Y --paths "/*"
-   ```
-   *(Thay đổi `E39TFB7INWHA6Y` bằng CloudFront Distribution ID tương ứng với trang web của bạn)*
-
----
-
-## 4. Cách Tra Cứu Thông Tin Dịch Vụ AWS Trên AWS Console (Khi deploy mới)
-
-Nếu bạn triển khai một hệ thống backend mới trên AWS và cần lấy thông tin cấu hình cho file `.env`, hãy làm theo hướng dẫn sau:
-
-### 4.1 Lấy thông tin Cognito User Pool & App Client ID
-1. Truy cập [AWS Management Console](https://console.aws.amazon.com/).
-2. Tìm dịch vụ **Cognito** → Chọn mục **User Pools**.
-3. Chọn User Pool tương ứng với dự án của bạn (ví dụ: `User pool - r8hpjb`).
-4. **UserPool ID**: Copy mã ID ở ngay phần đầu trang thông tin (dạng `us-east-1_xxxxxxxxx`).
-5. **App Client ID**: Di chuyển sang tab **App integration** → Cuộn xuống dưới cùng tại phần **App client list** → Copy chuỗi ký tự **Client ID** của App Client.
-
-### 4.2 Lấy thông tin Endpoint API Gateway
-1. Tìm kiếm dịch vụ **API Gateway** trên AWS Console.
-2. Chọn REST API của dự án (ví dụ: `student-portal-api`).
-3. Click vào mục **Stages** ở menu bên trái → Chọn Stage đang chạy (ví dụ: `prod`).
-4. **Invoke URL**: Copy đường dẫn URL hiển thị ở trên cùng (dạng `https://xxxxxx.execute-api.us-east-1.amazonaws.com/prod`).
-
-### 4.3 Lấy CloudFront Distribution ID & S3 Bucket Name
-1. Tìm kiếm dịch vụ **CloudFront** trên AWS Console.
-2. Tìm Distribution tương ứng với domain trang web của bạn (`d3th0yl82lu593.cloudfront.net`).
-3. **Distribution ID**: Lấy ở cột **ID** của bảng danh sách (ví dụ: `E39TFB7INWHA6Y`).
-4. **S3 Bucket**: Chuyển sang tab **Origins** của Distribution đó để xem chính xác tên S3 Bucket nguồn (ví dụ: `student-portal-frontend-147997148454.s3.amazonaws.com` -> Tên bucket là `student-portal-frontend-147997148454`).
-
----
-
-## 5. Xử Lý Các Sự Cố Thường Gặp (Troubleshooting)
-
-* **Lỗi 403 Forbidden hoặc CORS khi tương tác với API từ Local**:
-  * Kiểm tra lại file `frontend/.env` đã cấu hình đúng `VITE_API_ENDPOINT` chưa (thiếu dấu `/` ở cuối hoặc sai giao thức `https`).
-  * Đảm bảo cấu hình CORS trên API Gateway đã cho phép Domain Local của bạn (ví dụ: `http://localhost:5173`).
-* **Đăng nhập thất bại / Báo lỗi kết nối UserPool**:
-  * Kiểm tra xem các biến `VITE_COGNITO_USER_POOL_ID` và `VITE_COGNITO_CLIENT_ID` đã khớp chính xác với thông số trên AWS Console chưa.
-* **AWS CLI báo lỗi Expired Token khi deploy**:
-  * Phiên đăng nhập AWS của bạn đã hết hạn. Hãy lấy Access Key mới từ AWS IAM / AWS Academy Learner Lab và chạy lại lệnh `aws configure`.
+| Triệu chứng | Cách xử lý |
+|---|---|
+| `Cổng 8080 đang được sử dụng` | Đặt `PORT=8081` |
+| Trang trắng, log báo không tìm thấy frontend build | Chạy `npm run build` (hoặc dùng `npm run dev:web`) |
+| Quên mật khẩu Admin duy nhất | Dùng chức năng Quên mật khẩu (mã OTP trong `data/logs/outbox.log` nếu chưa cấu hình SMTP) |
+| `ERR_UNKNOWN_BUILTIN_MODULE node:sqlite` | Nâng cấp Node lên ≥ 22.13 |
+| Bị đăng xuất sau khi đổi quyền / đổi mật khẩu | Bình thường: token cũ bị thu hồi, đăng nhập lại |

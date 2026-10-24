@@ -27,7 +27,7 @@ export default function AdminStudentList() {
 
   const handleRefresh = () => {
     load()
-    setMessage('Đã làm mới dữ liệu sinh viên từ DynamoDB.')
+    setMessage('Đã làm mới dữ liệu sinh viên.')
   }
 
   const filtered = students.filter(s => {

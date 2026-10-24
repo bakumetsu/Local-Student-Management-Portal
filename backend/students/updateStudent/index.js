@@ -1,45 +1,35 @@
-import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE_NAME } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { validateStudent } from '../../common/validators.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
     const id = event.pathParameters?.id
     if (!id) return error('Thiếu id', 400)
 
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
+    const repo = table(TABLE.STUDENTS)
+    const current = repo.get(id)
+    if (!current) return error('Không tìm thấy sinh viên', 404)
 
     const fields = ['fullName', 'email', 'phone', 'gender', 'dateOfBirth', 'major', 'className', 'status', 'gpa']
-    const updates = []
-    const values = {}
+    const updates = {}
     for (const f of fields) {
       if (data[f] !== undefined) {
-        updates.push(`${f} = :${f}`)
-        values[`:${f}`] = f === 'gpa' ? (data[f] !== null ? Number(data[f]) : null) : data[f]
+        updates[f] = f === 'gpa' ? (data[f] !== null && data[f] !== '' ? Number(data[f]) : null) : data[f]
       }
     }
-    updates.push('updatedAt = :updatedAt')
-    values[':updatedAt'] = new Date().toISOString()
 
-    const res = await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { id },
-        UpdateExpression: `SET ${updates.join(', ')}`,
-        ExpressionAttributeValues: values,
-        ReturnValues: 'ALL_NEW'
-      })
-    )
-    return success({ message: 'Cập nhật thành công', student: res.Attributes })
+    // Kiểm tra lại dữ liệu sau khi gộp để không lưu email/gpa sai.
+    const errors = validateStudent({ ...current, ...updates })
+    if (errors.length > 0) return error(errors.join('; '), 400)
+
+    const student = repo.update(id, { ...updates, updatedAt: new Date().toISOString() })
+    return success({ message: 'Cập nhật thành công', student })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Staff')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Staff')(baseHandler)

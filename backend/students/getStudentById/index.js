@@ -1,27 +1,19 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE_NAME } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, fromError } from '../../common/response.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
     const id = event.pathParameters?.id
     if (!id) return error('Thiếu id', 400)
 
-    const res = await docClient.send(
-      new GetCommand({ TableName: TABLE_NAME, Key: { id } })
-    )
-    if (!res.Item) return error('Không tìm thấy sinh viên', 404)
+    const item = table(TABLE.STUDENTS).get(id)
+    if (!item) return error('Không tìm thấy sinh viên', 404)
 
-    return success(res.Item)
+    return success(item)
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Staff')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Staff')(baseHandler)

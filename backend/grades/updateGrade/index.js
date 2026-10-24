@@ -1,41 +1,34 @@
-import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { validateGrade } from '../../common/validators.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
     const id = event.pathParameters?.id
     if (!id) return error('Thiếu id', 400)
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
 
     const fields = ['subject', 'semester', 'score', 'note']
-    const updates = []
-    const values = {}
+    const updates = {}
     for (const f of fields) {
-      if (data[f] !== undefined) {
-        updates.push(`${f} = :${f}`)
-        values[`:${f}`] = f === 'score' ? Number(data[f]) : data[f]
-      }
+      if (data[f] !== undefined) updates[f] = f === 'score' ? Number(data[f]) : data[f]
     }
-    if (updates.length === 0) return error('Không có trường nào để cập nhật', 400)
+    if (Object.keys(updates).length === 0) return error('Không có trường nào để cập nhật', 400)
 
-    const res = await docClient.send(new UpdateCommand({
-      TableName: TABLE.GRADES,
-      Key: { id },
-      UpdateExpression: `SET ${updates.join(', ')}`,
-      ExpressionAttributeValues: values,
-      ReturnValues: 'ALL_NEW'
-    }))
-    return success({ message: 'Cập nhật điểm thành công', grade: res.Attributes })
+    const repo = table(TABLE.GRADES)
+    const current = repo.get(id)
+    if (!current) return error('Không tìm thấy điểm', 404)
+
+    // Kiểm tra lại sau khi gộp (vd. score ngoài khoảng 0-10).
+    const errs = validateGrade({ ...current, ...updates })
+    if (errs.length > 0) return error(errs.join('; '), 400)
+
+    const grade = repo.update(id, updates)
+    return success({ message: 'Cập nhật điểm thành công', grade })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Teacher')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Teacher')(baseHandler)

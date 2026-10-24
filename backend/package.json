@@ -1,20 +1,22 @@
 {
-  "name": "aws-student-management-portal-backend",
-  "version": "1.0.0",
+  "name": "student-management-portal-backend",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "AWS Lambda functions (Node.js) for Student Management Portal",
+  "description": "Self-hosted API server (Express + SQLite) for Student Management Portal",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node seed-all-data.js",
+    "test": "node test-integration.js"
+  },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.1085.0",
-    "@aws-sdk/client-cognito-identity-provider": "^3.515.0",
-    "@aws-sdk/client-dynamodb": "^3.515.0",
-    "@aws-sdk/client-s3": "^3.515.0",
-    "@aws-sdk/client-ses": "^3.515.0",
-    "@aws-sdk/client-sqs": "^3.515.0",
-    "@aws-sdk/lib-dynamodb": "^3.515.0",
-    "@aws-sdk/s3-request-presigner": "^3.515.0",
-    "jsonwebtoken": "^9.0.1",
-    "jwks-rsa": "^2.1.4",
-    "uuid": "^9.0.1"
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.5"
   }
 }

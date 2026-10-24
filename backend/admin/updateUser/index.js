@@ -1,9 +1,7 @@
-import { CognitoIdentityProviderClient, AdminEnableUserCommand, AdminDisableUserCommand, AdminListGroupsForUserCommand, AdminRemoveUserFromGroupCommand, AdminAddUserToGroupCommand } from '@aws-sdk/client-cognito-identity-provider'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
-
-const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' })
-const userPoolId = process.env.COGNITO_USER_POOL_ID || ''
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { getUser, updateUser, ROLES } from '../../common/users.js'
+import { requireRole } from '../../common/authMiddleware.js'
+import { checkAdminChange } from '../guards.js'
 
 const baseHandler = async (event) => {
   try {
@@ -11,59 +9,30 @@ const baseHandler = async (event) => {
     if (!username) {
       return error('Thiếu tham số username', 400)
     }
-    if (!userPoolId) {
-      return error('Thiếu cấu hình Cognito User Pool ID', 400)
-    }
 
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
-    const { role, enabled } = data
+    const { role, enabled } = parseBody(event)
+    if (enabled !== undefined && typeof enabled !== 'boolean') return error('Trường enabled phải là true hoặc false', 400)
+    if (role !== undefined && !ROLES.includes(role)) return error(`Role không hợp lệ. Cho phép: ${ROLES.join(', ')}`, 400)
 
-    // 1. Cập nhật trạng thái kích hoạt (enabled/disabled)
-    if (enabled !== undefined) {
-      if (enabled) {
-        await cognitoClient.send(new AdminEnableUserCommand({ UserPoolId: userPoolId, Username: username }))
-      } else {
-        await cognitoClient.send(new AdminDisableUserCommand({ UserPoolId: userPoolId, Username: username }))
-      }
-    }
+    const target = getUser(username)
+    if (!target) return error('Không tìm thấy tài khoản', 404)
 
-    // 2. Cập nhật nhóm quyền (role)
-    if (role) {
-      // Lấy danh sách nhóm hiện tại của người dùng
-      const groupsRes = await cognitoClient.send(new AdminListGroupsForUserCommand({
-        UserPoolId: userPoolId,
-        Username: username
-      }))
-      
-      const currentGroups = (groupsRes.Groups || []).map(g => g.GroupName)
+    const blocked = checkAdminChange(event, target, {
+      disabling: enabled === false,
+      newRole: role
+    })
+    if (blocked) return error(blocked, 400)
 
-      // Xóa người dùng khỏi các nhóm quyền cũ (Admin, Staff, Student, Teacher)
-      const rolesToRemove = ['Admin', 'Staff', 'Student', 'Teacher', 'User'].filter(r => currentGroups.includes(r))
-      for (const group of rolesToRemove) {
-        try {
-          await cognitoClient.send(new AdminRemoveUserFromGroupCommand({
-            UserPoolId: userPoolId,
-            Username: username,
-            GroupName: group
-          }))
-        } catch (rmErr) {
-          console.warn(`Không thể xóa user khỏi nhóm ${group}:`, rmErr.message)
-        }
-      }
-
-      // Thêm người dùng vào nhóm quyền mới
-      await cognitoClient.send(new AdminAddUserToGroupCommand({
-        UserPoolId: userPoolId,
-        Username: username,
-        GroupName: role
-      }))
-    }
+    // Mỗi tài khoản có đúng một nhóm quyền (thay cho việc gỡ/gán Cognito group).
+    const changes = {}
+    if (enabled !== undefined && enabled !== target.enabled) changes.enabled = enabled
+    if (role && role !== target.role) changes.role = role
+    updateUser(username, changes)
 
     return success({ message: 'Cập nhật thông tin tài khoản thành công' })
   } catch (err) {
-    console.error('Update user error:', err)
-    return error(err.message || 'Lỗi máy chủ khi cập nhật tài khoản', 500)
+    return fromError(err, 'Lỗi máy chủ khi cập nhật tài khoản')
   }
 }
 
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

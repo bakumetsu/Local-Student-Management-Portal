@@ -79,7 +79,7 @@ export default function Welcome() {
           letterSpacing: '-0.02em',
           lineHeight: '1.25'
         }}>
-          AWS Student Management Portal
+          Student Management Portal
         </h1>
 
         {/* Subtitle */}
@@ -90,7 +90,7 @@ export default function Welcome() {
           margin: '0 auto 36px',
           lineHeight: '1.57'
         }}>
-          Hệ thống quản lý học vụ chuẩn doanh nghiệp được xây dựng trên hạ tầng đám mây AWS. Đơn giản, an toàn và tối ưu hiệu suất.
+          Hệ thống quản lý học vụ chuẩn doanh nghiệp, tự vận hành hoàn toàn trên máy chủ của bạn. Đơn giản, an toàn và tối ưu hiệu suất.
         </p>
 
         {/* AntD style Feature Row */}
@@ -108,8 +108,8 @@ export default function Welcome() {
             borderRadius: '8px'
           }}>
             <Shield size={20} style={{ color: '#1677ff', marginBottom: '8px' }} />
-            <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.88)' }}>Bảo mật đám mây</h4>
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Xác thực bảo mật mạnh mẽ qua dịch vụ AWS Cognito.</p>
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.88)' }}>Bảo mật</h4>
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Xác thực JWT, mật khẩu băm scrypt và phân quyền theo vai trò.</p>
           </div>
           <div style={{
             backgroundColor: '#fafafa',
@@ -119,7 +119,7 @@ export default function Welcome() {
           }}>
             <Award size={20} style={{ color: '#52c41a', marginBottom: '8px' }} />
             <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.88)' }}>Quản lý học vụ</h4>
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Xem lớp, nhập điểm số, quản lý hồ sơ trực tiếp DynamoDB.</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Xem lớp, nhập điểm số, quản lý hồ sơ sinh viên tập trung.</p>
           </div>
           <div style={{
             backgroundColor: '#fafafa',
@@ -129,7 +129,7 @@ export default function Welcome() {
           }}>
             <BookOpen size={20} style={{ color: '#faad14', marginBottom: '8px' }} />
             <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.88)' }}>Tài nguyên số</h4>
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Lưu trữ giáo trình và bài tập an toàn trên Amazon S3.</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0, 0, 0, 0.45)', lineHeight: '1.5' }}>Lưu trữ giáo trình và bài tập an toàn với link tải có chữ ký.</p>
           </div>
         </div>
 
@@ -165,7 +165,7 @@ export default function Welcome() {
         color: 'rgba(0, 0, 0, 0.45)',
         zIndex: 1
       }}>
-        &copy; {new Date().getFullYear()} AWS Student Portal. Powered by Ant Design Style.
+        &copy; {new Date().getFullYear()} Student Portal. Powered by Ant Design Style.
       </div>
     </div>
   )

@@ -1,87 +1,115 @@
 // src/services/authService.js
-// Các hàm xác thực với Cognito thông qua AWS Amplify.
-import { signIn, signOut, fetchAuthSession, fetchUserAttributes } from 'aws-amplify/auth'
+// Các hàm xác thực với backend tự host (thay cho Cognito/AWS Amplify).
+import api from './api'
 
+const TOKEN_KEY = 'idToken'
+
+// Giải mã payload JWT (không xác minh chữ ký — việc đó do server làm).
+const decodeToken = (token) => {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const json = decodeURIComponent(
+      atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+    )
+    return JSON.parse(json)
+  } catch (e) {
+    return null
+  }
+}
+
+const getPayload = () => {
+  const idToken = localStorage.getItem(TOKEN_KEY)
+  return idToken ? decodeToken(idToken) : null
+}
+
+const saveToken = (idToken) => {
+  localStorage.setItem(TOKEN_KEY, idToken)
+  localStorage.removeItem('accessToken') // khóa cũ của Amplify
+}
+
+// Token còn hạn (có trừ hao 30 giây lệch đồng hồ).
+export const hasValidSession = () => {
+  const payload = getPayload()
+  return Boolean(payload?.exp && payload.exp * 1000 > Date.now() + 30000)
+}
+
+// Trả về { challenge: 'NEW_PASSWORD_REQUIRED', session, email } nếu phải đổi mật khẩu lần đầu.
 export const login = async (username, password) => {
   try {
-    // Fix Cognito authentication - Cognito v6 expects username to be email for loginWith.email: true
-    const user = await signIn({ username, password })
-    await getSessionTokens()
-    return user
+    const { data } = await api.post('/auth/login', { email: username, password })
+    if (data.challenge) return data
+    saveToken(data.idToken)
+    return data.user
   } catch (error) {
-    // Xử lý trường hợp UserAlreadyAuthenticatedException
-    if (error.name === 'UserAlreadyAuthenticatedException') {
-      // Người dùng đã đăng nhập, lấy session hiện tại
-      const session = await fetchAuthSession()
-      const idToken = session.tokens?.idToken?.toString()
-      const accessToken = session.tokens?.accessToken?.toString()
-      if (idToken) {
-        localStorage.setItem('idToken', idToken)
-        localStorage.setItem('accessToken', accessToken)
-      }
-      return { isAlreadyAuthenticated: true, message: 'Người dùng đã đăng nhập' }
-    }
-    // Cung cấp error message rõ ràng hơn cho việc xác thực Cognito thất bại
-    if (error.message.includes('Invalid credentials') || error.message.includes('Authentication failure')) {
+    if (error.response?.status === 401) {
       throw new Error('Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.')
     }
     throw error
   }
 }
 
+export const completeNewPassword = async (session, newPassword) => {
+  const { data } = await api.post('/auth/complete-new-password', { session, newPassword })
+  saveToken(data.idToken)
+  return data.user
+}
+
 export const clearSession = () => {
-  localStorage.removeItem('idToken')
+  localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem('accessToken')
 }
 
 export const logout = async () => {
-  await signOut()
   clearSession()
 }
 
+// Giữ tương thích với code cũ: trả về session hiện tại nếu token còn hạn.
 export const getSessionTokens = async () => {
-  // Lưu token từ session hiện tại để gọi API Gateway.
-  // Amplify v6: dùng fetchAuthSession() để lấy tokens (getCurrentUser
-  // chỉ trả về {username, userId, signInDetails}, KHÔNG có tokens).
-  const session = await fetchAuthSession()
-  const idToken = session.tokens?.idToken?.toString()
-  const accessToken = session.tokens?.accessToken?.toString()
-  if (idToken) {
-    localStorage.setItem('idToken', idToken)
-    localStorage.setItem('accessToken', accessToken)
+  if (!hasValidSession()) {
+    clearSession()
+    return { tokens: null }
   }
-  return session
+  return { tokens: { idToken: localStorage.getItem(TOKEN_KEY) } }
 }
 
+// Thuộc tính người dùng: { sub, email, name, phone_number, role }
 export const getCurrentUserAttributes = async () => {
-  return await fetchUserAttributes()
+  const { data } = await api.get('/auth/me')
+  return data
 }
+
+export const updateCurrentUserAttributes = async ({ name, phone }) => {
+  const { data } = await api.put('/auth/me', { name, phone })
+  return data
+}
+
+export const changePassword = async (oldPassword, newPassword) => {
+  const { data } = await api.post('/auth/change-password', { oldPassword, newPassword })
+  saveToken(data.idToken) // token cũ bị thu hồi sau khi đổi mật khẩu
+  return data
+}
+
+export const forgotPassword = (email) => api.post('/auth/forgot-password', { email })
+export const verifyResetCode = (email, code) => api.post('/auth/verify-code', { email, code })
+export const resetPassword = (email, code, newPassword) => api.post('/auth/reset-password', { email, code, newPassword })
 
 export const getUserRole = () => {
-  const idToken = localStorage.getItem('idToken')
-  if (!idToken) return null
-  try {
-    const payload = JSON.parse(atob(idToken.split('.')[1]))
-    const groups = payload['cognito:groups'] || []
-    if (groups.includes('Admin')) return 'Admin'
-    if (groups.includes('Staff')) return 'Staff'
-    if (groups.includes('Student')) return 'Student'
-    if (groups.includes('Teacher')) return 'Teacher'
-    return 'User'
-  } catch (e) {
-    return null
-  }
+  const payload = getPayload()
+  if (!payload) return null
+  const groups = payload.groups || []
+  if (groups.includes('Admin')) return 'Admin'
+  if (groups.includes('Staff')) return 'Staff'
+  if (groups.includes('Student')) return 'Student'
+  if (groups.includes('Teacher')) return 'Teacher'
+  return 'User'
 }
 
 export const getUserEmail = () => {
-  const idToken = localStorage.getItem('idToken')
-  if (!idToken) return null
-  try {
-    const payload = JSON.parse(atob(idToken.split('.')[1]))
-    return payload.email || payload.username || null
-  } catch (e) {
-    return null
-  }
+  const payload = getPayload()
+  return payload ? payload.email || payload.sub || null : null
 }
 
-export default { login, logout, getSessionTokens, getCurrentUserAttributes, getUserRole, getUserEmail }
+export default {
+  login, logout, completeNewPassword, getSessionTokens, getCurrentUserAttributes, updateCurrentUserAttributes,
+  changePassword, forgotPassword, verifyResetCode, resetPassword, getUserRole, getUserEmail, hasValidSession
+}

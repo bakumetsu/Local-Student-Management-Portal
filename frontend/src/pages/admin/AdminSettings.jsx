@@ -7,7 +7,7 @@ export default function AdminSettings() {
     systemName: 'Student Management Portal',
     maxUploadSize: '10MB',
     emailSender: 'noreply@example.com',
-    region: 'us-east-1',
+    storage: 'Local (data/uploads)',
     maintenanceMode: false
   })
   const [message, setMessage] = useState('')
@@ -38,7 +38,7 @@ export default function AdminSettings() {
                 />
               </div>
               <div className="form-group" style={{ marginBottom: '15px' }}>
-                <label className="form-label">Kích thước file upload tối đa S3</label>
+                <label className="form-label">Kích thước file upload tối đa</label>
                 <input
                   type="text"
                   className="form-control"
@@ -47,7 +47,7 @@ export default function AdminSettings() {
                 />
               </div>
               <div className="form-group" style={{ marginBottom: '15px' }}>
-                <label className="form-label">SES Email gửi thông báo</label>
+                <label className="form-label">Email gửi thông báo (SMTP)</label>
                 <input
                   type="email"
                   className="form-control"
@@ -56,11 +56,11 @@ export default function AdminSettings() {
                 />
               </div>
               <div className="form-group" style={{ marginBottom: '15px' }}>
-                <label className="form-label">AWS Region</label>
+                <label className="form-label">Kho lưu trữ file</label>
                 <input
                   type="text"
                   className="form-control"
-                  value={settings.region}
+                  value={settings.storage}
                   disabled
                 />
               </div>

@@ -18,7 +18,7 @@ export default function AdminUsers() {
       setUsers(res.data.users || res.data || [])
     } catch (err) {
       console.error(err)
-      setError('Không thể tải danh sách tài khoản từ Cognito.')
+      setError('Không thể tải danh sách tài khoản.')
     } finally {
       setLoading(false)
     }
@@ -38,7 +38,7 @@ export default function AdminUsers() {
       load()
     } catch (err) {
       console.error(err)
-      setError('Thay đổi trạng thái tài khoản thất bại.')
+      setError(err.message || 'Thay đổi trạng thái tài khoản thất bại.')
     }
   }
 
@@ -52,7 +52,7 @@ export default function AdminUsers() {
       load()
     } catch (err) {
       console.error(err)
-      setError('Xóa tài khoản thất bại.')
+      setError(err.message || 'Xóa tài khoản thất bại.')
     }
   }
 
@@ -63,7 +63,7 @@ export default function AdminUsers() {
         <Navbar title="Quản Lý Tài Khoản Người Dùng" />
         <main className="main-content">
           <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 className="page-title" style={{ margin: 0 }}>Cognito Users</h2>
+            <h2 className="page-title" style={{ margin: 0 }}>Users</h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button className="btn btn-outline" onClick={load} disabled={loading}>Làm mới</button>
               <Link to="/admin/users/create" className="btn btn-primary">Thêm tài khoản</Link>
@@ -87,7 +87,7 @@ export default function AdminUsers() {
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left', padding: '12px' }}>Email / Username</th>
-                    <th style={{ textAlign: 'left', padding: '12px' }}>Trạng Thái Cognito</th>
+                    <th style={{ textAlign: 'left', padding: '12px' }}>Trạng Thái</th>
                     <th style={{ textAlign: 'left', padding: '12px' }}>Nhóm Quyền (Groups)</th>
                     <th style={{ textAlign: 'center', padding: '12px' }}>Hoạt Động</th>
                     <th style={{ textAlign: 'center', padding: '12px' }}>Thao tác</th>

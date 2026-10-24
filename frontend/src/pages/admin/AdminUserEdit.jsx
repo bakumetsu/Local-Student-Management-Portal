@@ -49,7 +49,7 @@ export default function AdminUserEdit() {
         role: form.role,
         enabled: form.enabled
       })
-      setMessage('Cập nhật quyền và trạng thái hoạt động trên Cognito thành công!')
+      setMessage('Cập nhật quyền và trạng thái hoạt động thành công!')
       setTimeout(() => {
         navigate(`/admin/users/${username}`)
       }, 1500)

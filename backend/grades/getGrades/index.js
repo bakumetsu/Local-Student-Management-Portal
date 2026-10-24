@@ -1,19 +1,14 @@
-import { ScanCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, fromError } from '../../common/response.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async () => {
   try {
-    const res = await docClient.send(new ScanCommand({ TableName: TABLE.GRADES }))
-    return success({ grades: res.Items || [], count: res.Count || čku })
+    const grades = table(TABLE.GRADES).scan()
+    return success({ grades, count: grades.length })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Teacher')(authHandler)
-
-export const handler = authAndRoleHandler
+export const handler = requireRole('Teacher')(baseHandler)

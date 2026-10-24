@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 build/
+release/
+
+# Runtime data (SQLite database, uploads, logs, JWT secret)
+data/
 
 # Logs
 *.log

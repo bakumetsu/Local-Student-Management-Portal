@@ -22,7 +22,7 @@ export default function AdminUserCreate() {
         role: form.role,
         password: form.password
       })
-      setMessage(`Đã tạo thành công tài khoản ${form.email} (Quyền: ${form.role}) trên Amazon Cognito!`)
+      setMessage(`Đã tạo thành công tài khoản ${form.email} (Quyền: ${form.role})!`)
       setTimeout(() => {
         navigate('/admin/users')
       }, 1500)
@@ -41,7 +41,7 @@ export default function AdminUserCreate() {
         <Navbar title="Thêm Tài Khoản Mới" />
         <main className="main-content">
           <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h3>Tạo tài khoản đăng nhập trên Cognito</h3>
+            <h3>Tạo tài khoản đăng nhập</h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', marginBottom: '20px' }}>
               Mật khẩu tạm thời sẽ được tự động gửi qua email đăng ký. Người dùng phải thay đổi mật khẩu ở lần đăng nhập đầu tiên.
             </p>

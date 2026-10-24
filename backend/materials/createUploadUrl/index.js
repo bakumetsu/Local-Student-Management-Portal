@@ -1,30 +1,25 @@
 // materials/createUploadUrl/index.js
-import { success, error } from '../../common/response.js'
-import { getUploadSignedUrl, BUCKET_NAME } from '../../common/s3.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { getUploadSignedUrl, safeFileName, safeSegment } from '../../common/storage.js'
+import { requireRole } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
   try {
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
+    const data = parseBody(event)
     const { fileName, contentType, type } = data
     if (!fileName || !type) return error('Thiếu fileName hoặc type', 400)
 
-    const key = `materials/${type}/${Date.now()}-${fileName}`
+    const key = `materials/${safeSegment(type)}/${Date.now()}-${safeFileName(fileName)}`
     const uploadUrl = await getUploadSignedUrl(key, contentType || 'application/octet-stream')
 
     return success({
       uploadUrl,
-      s3Key: key,
-      fileUrl: `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`
+      s3Key: key
     })
   } catch (err) {
-    console.error(err)
-    return error(err.message || 'Lỗi máy chủ', 500)
+    return fromError(err)
   }
 }
 
-// Áp dụng middleware auth và RBAC: chỉ Student được upload tài liệu
-const authHandler = withAuth(baseHandler)
-const authAndRoleHandler = requireRole('Student')(authHandler)
-
-export const handler = authAndRoleHandler
+// Giáo viên upload tài liệu (Admin/Staff luôn được phép) — cùng quyền với bước lưu metadata.
+export const handler = requireRole('Teacher')(baseHandler)

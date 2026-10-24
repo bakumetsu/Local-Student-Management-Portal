@@ -1,6 +1,5 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb'
-import { docClient, TABLE } from '../../common/dynamodb.js'
-import { success, error } from '../../common/response.js'
+import { table, TABLE } from '../../common/db.js'
+import { success, error, fromError } from '../../common/response.js'
 import { withAuth } from '../../common/authMiddleware.js'
 
 const baseHandler = async (event) => {
@@ -10,19 +9,14 @@ const baseHandler = async (event) => {
       return error('Thiếu tham số id lớp học', 400)
     }
 
-    const res = await docClient.send(new GetCommand({
-      TableName: TABLE.CLASSES,
-      Key: { id: classId }
-    }))
-
-    if (!res.Item) {
+    const item = table(TABLE.CLASSES).get(classId)
+    if (!item) {
       return error('Không tìm thấy lớp học', 404)
     }
 
-    return success(res.Item)
+    return success(item)
   } catch (err) {
-    console.error('Get class by ID error:', err)
-    return error(err.message || 'Lỗi máy chủ khi lấy chi tiết lớp học', 500)
+    return fromError(err, 'Lỗi máy chủ khi lấy chi tiết lớp học')
   }
 }
 

@@ -1,9 +1,7 @@
-import { CognitoIdentityProviderClient, AdminEnableUserCommand, AdminDisableUserCommand } from '@aws-sdk/client-cognito-identity-provider'
-import { success, error } from '../../common/response.js'
-import { withAuth, requireRole } from '../../common/authMiddleware.js'
-
-const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' })
-const userPoolId = process.env.COGNITO_USER_POOL_ID || ''
+import { success, error, parseBody, fromError } from '../../common/response.js'
+import { getUser, updateUser } from '../../common/users.js'
+import { requireRole } from '../../common/authMiddleware.js'
+import { checkAdminChange } from '../guards.js'
 
 const baseHandler = async (event) => {
   try {
@@ -12,31 +10,25 @@ const baseHandler = async (event) => {
     if (!username) {
       return error('Thiếu tham số username', 400)
     }
-    if (!userPoolId) {
-      return error('Thiếu cấu hình Cognito User Pool ID', 400)
+
+    const { enabled } = parseBody(event)
+    if (typeof enabled !== 'boolean') return error('Trường enabled phải là true hoặc false', 400)
+
+    const target = getUser(username)
+    if (!target) return error('Không tìm thấy tài khoản', 404)
+
+    if (!enabled) {
+      const blocked = checkAdminChange(event, target, { disabling: true })
+      if (blocked) return error(blocked, 400)
     }
 
-    const data = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
-    const { enabled } = data
-
-    if (enabled) {
-      await cognitoClient.send(new AdminEnableUserCommand({
-        UserPoolId: userPoolId,
-        Username: username
-      }))
-    } else {
-      await cognitoClient.send(new AdminDisableUserCommand({
-        UserPoolId: userPoolId,
-        Username: username
-      }))
-    }
+    updateUser(username, { enabled })
 
     return success({ message: `Đã ${enabled ? 'kích hoạt' : 'vô hiệu hóa'} tài khoản thành công` })
   } catch (err) {
-    console.error('Toggle user error:', err)
-    return error(err.message || 'Lỗi máy chủ khi thay đổi trạng thái tài khoản', 500)
+    return fromError(err, 'Lỗi máy chủ khi thay đổi trạng thái tài khoản')
   }
 }
 
 // Chỉ cho phép Admin truy cập
-export const handler = requireRole('Admin')(withAuth(baseHandler))
+export const handler = requireRole('Admin')(baseHandler)

@@ -1,13 +1,13 @@
 // src/services/api.js
 // Cấu hình axios instance chung cho toàn bộ ứng dụng.
 import axios from 'axios'
-import awsConfig from '../config/awsConfig'
 
+// Mặc định gọi API cùng origin (/api); đặt VITE_API_ENDPOINT nếu backend ở nơi khác.
 const api = axios.create({
-  baseURL: awsConfig.API.REST.StudentApi.endpoint
+  baseURL: import.meta.env.VITE_API_ENDPOINT || '/api'
 })
 
-// Tự động đính kèm Authorization header (Cognito idToken) vào mỗi request.
+// Tự động đính kèm Authorization header (idToken) vào mỗi request.
 api.interceptors.request.use(async (config) => {
   try {
     const token = localStorage.getItem('idToken')
@@ -23,17 +23,22 @@ api.interceptors.request.use(async (config) => {
 // Xử lý lỗi 401 -> chuyển về trang login.
 api.interceptors.response.use(
   (response) => {
-    // Tự động giải nén response wrapper (success: true, data: ...) từ Lambda
+    // Tự động giải nén response wrapper (success: true, data: ...) từ server
     if (response.data && response.data.success === true && Object.prototype.hasOwnProperty.call(response.data, 'data')) {
       response.data = response.data.data
     }
     return response
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // Dùng thông báo lỗi tiếng Việt từ server cho err.message
+    const serverMessage = error.response?.data?.message
+    if (serverMessage) error.message = serverMessage
+
+    // Các endpoint /auth/* công khai (login, quên mật khẩu...) tự xử lý 401, không chuyển trang.
+    const isPublicAuthCall = /^\/?auth\/(login|complete-new-password|forgot-password|verify-code|reset-password)/.test(error.config?.url || '')
+    if (error.response && error.response.status === 401 && !isPublicAuthCall) {
       localStorage.removeItem('idToken')
-      localStorage.removeItem('accessToken')
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') window.location.href = '/login'
     }
     return Promise.reject(error)
   }

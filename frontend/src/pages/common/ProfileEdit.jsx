@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Sidebar from '../../components/Sidebar'
-import { getCurrentUserAttributes } from '../../services/authService'
+import { getCurrentUserAttributes, updateCurrentUserAttributes } from '../../services/authService'
 
 export default function ProfileEdit() {
   const navigate = useNavigate()
@@ -15,6 +15,7 @@ export default function ProfileEdit() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -38,16 +39,24 @@ export default function ProfileEdit() {
   }, [])
 
   const handleAvatarChange = () => {
-    setMessage('Mô phỏng chọn và thay đổi ảnh đại diện (upload lên S3 Bucket) thành công!')
+    setMessage('Mô phỏng chọn và thay đổi ảnh đại diện thành công!')
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setMessage('Cập nhật hồ sơ cá nhân thành công!')
+    setSaving(true)
     setError('')
-    setTimeout(() => {
-      navigate('/profile')
-    }, 1500)
+    try {
+      // Họ tên và số điện thoại được lưu vào tài khoản; giới tính/địa chỉ chỉ hiển thị.
+      await updateCurrentUserAttributes({ name: profile.name, phone: profile.phone })
+      setMessage('Cập nhật hồ sơ cá nhân thành công!')
+      setTimeout(() => {
+        navigate('/profile')
+      }, 1500)
+    } catch (err) {
+      setError(err.message || 'Không thể cập nhật hồ sơ.')
+      setSaving(false)
+    }
   }
 
   return (
@@ -126,7 +135,7 @@ export default function ProfileEdit() {
                 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button type="button" className="btn btn-outline" onClick={() => navigate('/profile')}>Hủy</button>
-                  <button type="submit" className="btn btn-primary">Lưu thay đổi</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>Lưu thay đổi</button>
                 </div>
               </form>
             </div>

@@ -14,7 +14,12 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      // Tài khoản do Admin tạo phải đổi mật khẩu tạm ở lần đăng nhập đầu.
+      if (result?.challenge === 'NEW_PASSWORD_REQUIRED') {
+        navigate('/new-password', { state: { session: result.session, email: result.email } })
+        return
+      }
       const role = getUserRole()
       if (role === 'Admin') {
         navigate('/admin/dashboard')

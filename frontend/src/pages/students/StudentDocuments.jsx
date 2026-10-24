@@ -25,7 +25,7 @@ export default function StudentDocuments() {
         setStudent(studentRes.data)
         
         const docRes = await getStudentDocuments(id)
-        setDocuments(docRes.data || [])
+        setDocuments(docRes.data.documents || [])
       } catch (err) {
         console.error(err)
         setError('Không thể tải hồ sơ sinh viên.')
@@ -44,37 +44,38 @@ export default function StudentDocuments() {
     setError('')
     setMessage('')
     try {
-      // 1. Lấy Presigned URL từ Lambda
+      // 1. Lấy URL upload có chữ ký từ server
       const uploadRes = await createUploadUrl({
         fileName: file.name,
         contentType: file.type,
         studentId: id,
         docType: fileType
       })
-      const { uploadUrl, s3Key, fileUrl } = uploadRes.data
+      const { uploadUrl, s3Key, documentId } = uploadRes.data
 
-      // 2. Upload file trực tiếp lên S3
-      await fetch(uploadUrl, {
+      // 2. Upload file trực tiếp lên kho lưu trữ
+      const putRes = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type },
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
         body: file
       })
+      if (!putRes.ok) throw new Error((await putRes.json().catch(() => ({}))).message || 'Không thể tải file lên')
 
-      // 3. Lưu metadata vào DynamoDB
+      // 3. Lưu metadata vào database
       await saveDocumentMetadata({
         studentId: id,
         fileName: file.name,
         docType: fileType,
         s3Key,
-        fileUrl
+        documentId
       }, id)
 
-      setMessage('Tải hồ sơ lên S3 thành công!')
+      setMessage('Tải hồ sơ lên thành công!')
       setFile(null)
       
       // Reload danh sách tài liệu
       const docRes = await getStudentDocuments(id)
-      setDocuments(docRes.data || [])
+      setDocuments(docRes.data.documents || [])
     } catch (err) {
       console.error(err)
       setError('Upload thất bại: ' + err.message)
@@ -129,7 +130,7 @@ export default function StudentDocuments() {
                     </div>
 
                     <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={uploading}>
-                      {uploading ? 'Đang tải lên S3...' : 'Tải tài liệu lên'}
+                      {uploading ? 'Đang tải lên...' : 'Tải tài liệu lên'}
                     </button>
                   </form>
                 </div>

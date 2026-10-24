@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Sidebar from '../../components/Sidebar'
-import api from '../../services/api'
+import { getMaterialById, updateMaterial, createUploadUrl } from '../../services/materialService'
 
 export default function MaterialEdit() {
   const { id } = useParams()
@@ -10,15 +10,13 @@ export default function MaterialEdit() {
   const [form, setForm] = useState({ title: '', subject: '', type: 'slide', fileName: '' })
   const [file, setFile] = useState(null)
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    api.get(`/materials`)
-      .then(res => {
-        const list = res.data.materials || res.data || []
-        const current = list.find(m => m.id === id)
-        if (current) setForm(current)
-      })
-      .catch(err => console.error(err))
+    getMaterialById(id)
+      .then(res => setForm(res.data))
+      .catch(err => setError(err.message || 'Không thể tải tài liệu.'))
   }, [id])
 
   const handleFileChange = (e) => {
@@ -29,12 +27,29 @@ export default function MaterialEdit() {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setMessage('Cập nhật thay đổi tài liệu học tập thành công!')
-    setTimeout(() => {
-      navigate('/materials')
-    }, 1500)
+    setSaving(true)
+    setError('')
+    try {
+      const changes = { title: form.title, subject: form.subject, type: form.type }
+      // Nếu chọn file thay thế: upload file mới qua URL có chữ ký rồi gửi s3Key mới.
+      if (file) {
+        const { data } = await createUploadUrl({ fileName: file.name, contentType: file.type || 'application/octet-stream', type: form.type || 'other' })
+        const res = await fetch(data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file })
+        if (!res.ok) throw new Error('Upload file thay thế thất bại.')
+        changes.s3Key = data.s3Key
+        changes.fileName = file.name
+      }
+      await updateMaterial(id, changes)
+      setMessage('Cập nhật thay đổi tài liệu học tập thành công!')
+      setTimeout(() => {
+        navigate('/materials')
+      }, 1500)
+    } catch (err) {
+      setError(err.message || 'Cập nhật thất bại.')
+      setSaving(false)
+    }
   }
 
   return (
@@ -45,6 +60,7 @@ export default function MaterialEdit() {
         <main className="main-content">
           <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
             {message && <div className="alert alert-success">{message}</div>}
+            {error && <div className="alert alert-danger">{error}</div>}
 
             <form onSubmit={handleSubmit}>
               <div className="form-group" style={{ marginBottom: '15px' }}>
@@ -84,7 +100,7 @@ export default function MaterialEdit() {
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
                 <button type="button" className="btn btn-outline" onClick={() => navigate('/materials')}>Hủy</button>
-                <button type="submit" className="btn btn-primary">Lưu thay đổi</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>Lưu thay đổi</button>
               </div>
             </form>
           </div>
